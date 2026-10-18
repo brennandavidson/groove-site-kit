@@ -1,6 +1,7 @@
 ---
 // Public text opt-in page for carrier review. Shows the form's contact step without filling
 // anything in, with the exact consent text the live form shows, and what happens after submit.
+// With marketing consent on, it also shows the separate optional marketing box and its exact text.
 import LegalLayout from "./LegalLayout.astro";
 import { getSiteData } from "../site-data.js";
 import { LEGAL_PATHS } from "../paths.js";
@@ -17,11 +18,17 @@ export type Props = {
   consentRequired?: boolean;
   /** Match the live form: its separate contact consent box, if any. */
   contactConsent?: ContactConsent;
+  /**
+   * Match the live form's LeadForm marketingConsent. Default: on when site data has marketing
+   * consent wording. false: the page describes no marketing box.
+   */
+  marketingConsent?: boolean;
 };
 
-const { standalone, formPath = "/", submitLabel = "Get my free estimate", consentRequired = false, contactConsent } = Astro.props;
+const { standalone, formPath = "/", submitLabel = "Get my free estimate", consentRequired = false, contactConsent, marketingConsent } = Astro.props;
 const contactRequired = contactConsent ? (contactConsent.required ?? true) : false;
 const site = await getSiteData();
+const marketing = marketingConsent === false ? null : site.marketingConsent;
 const who = legalWho(site);
 const name = site.client.name;
 const phone = site.client.phoneDisplay;
@@ -48,7 +55,15 @@ const formLabel = formUrl.replace(/^https?:\/\//, "").replace(/\/$/, "") || "thi
         </>
       )
     }
-    We only text people who check the text message consent box.
+    {
+      marketing ? (
+        <>
+          The form also has a separate, <strong>unchecked, optional</strong> checkbox for marketing texts (offers and seasonal reminders), shown last. It is never required to send the request. We only send texts about the request to people who check the text message consent box, and only send marketing texts to people who check the marketing box.
+        </>
+      ) : (
+        "We only text people who check the text message consent box."
+      )
+    }
   </p>
   <p class="gsk-legal-note">This is the form's contact step, exactly as homeowners see it:</p>
   <div class="gsk-optin-mock" aria-label="Copy of the request form's contact step" role="figure">
@@ -81,15 +96,32 @@ const formLabel = formUrl.replace(/^https?:\/\//, "").replace(/\/$/, "") || "thi
         <a href={LEGAL_PATHS.terms}>SMS terms</a> and <a href={LEGAL_PATHS.privacy}>Privacy policy</a>
       </p>
     </div>
+    {
+      marketing && (
+        <div class="gsk-consent gsk-marketing-consent">
+          <div class="gsk-consent-label">
+            <span aria-hidden="true" class="gsk-consent-box" />
+            <span class="gsk-consent-text" data-marketing-consent-version={marketing.version}>
+              {marketing.text}
+            </span>
+          </div>
+        </div>
+      )
+    }
     <div class="gsk-legal-button">{submitLabel}</div>
   </div>
   <h2>After they submit</h2>
-  <p>People who checked the box get one text right away, from {name}:</p>
+  <p>People who checked {marketing ? "the text message consent box" : "the box"} get one text right away, from {name}:</p>
   <p class="gsk-legal-quote">
     Hi Jamie, this is {name}. We got your request. We'll call you in a few minutes{phone ? ` from ${phone}` : ""}. You can also reply here. Reply STOP to opt out.
   </p>
   <p>
-    Later texts are about that request only: replies to their questions and reminders about the estimate appointment they booked. Message frequency varies. {CARRIER.rates} Reply STOP to opt out at any time, HELP for help.
+    {
+      marketing
+        ? "Later texts about the request are replies to their questions and reminders about the estimate appointment they booked. People who also checked the separate marketing box may get occasional offers and seasonal reminders, as that box says; people who left it unchecked never get marketing texts."
+        : "Later texts are about that request only: replies to their questions and reminders about the estimate appointment they booked."
+    }{" "}
+    Message frequency varies. {CARRIER.rates} Reply STOP to opt out at any time, HELP for help.
   </p>
   <p>
     <a href={LEGAL_PATHS.terms}>Terms &amp; Conditions (SMS Terms)</a> | <a href={LEGAL_PATHS.privacy}>Privacy Policy</a>

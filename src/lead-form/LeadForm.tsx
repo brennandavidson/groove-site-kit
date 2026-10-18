@@ -5,6 +5,7 @@ import {
   contactConsentAnswer,
   fill,
   formatPhoneInput,
+  marketingConsentPayload,
   newLeadEventId,
   resolveFields,
   splitFullName,
@@ -18,6 +19,7 @@ import {
   type FormField,
   type IntakeResponse,
   type LeadPayload,
+  type MarketingConsent,
   type QuizStep,
   type ResolvedField,
 } from "./logic";
@@ -26,7 +28,8 @@ import {
  * Two layouts:
  * - "quiz" (default): multi-step quiz, then a contact step with the consent checkbox.
  * - "single": every field on one card (configurable fields, native selects), consent row, button.
- * The consent box is always unchecked and optional, with the portal's consent text.
+ * The consent box is unchecked (optional unless consentRequired), with the portal's consent text.
+ * With marketingConsent, a separate marketing texts box follows it: optional, unchecked, never required.
  * POSTs to intakeUrl with x-intake-key and a leadEventId generated here, then fires the
  * pixel Lead with the same id so Meta dedupes it against the portal's CAPI event.
  * Thank-you copy follows the call timing the portal returns (or a fixed message).
@@ -80,6 +83,12 @@ export type LeadFormProps = {
   consentRequired?: boolean;
   /** Optional second box (contact by phone and email about the request), shown before the SMS box. */
   contactConsent?: ContactConsent;
+  /**
+   * Separate marketing texts box (offers, seasonal reminders), shown below the SMS box with this exact
+   * wording. Always optional and unchecked; submitting never needs it. Sent as marketingConsent
+   * { checked, text, version }. Unset or null = no marketing box.
+   */
+  marketingConsent?: MarketingConsent | null;
   privacyUrl?: string;
   termsUrl?: string;
   /** Anchor id for "#estimate" links. */
@@ -243,6 +252,7 @@ function QuizLeadForm(props: LeadFormProps) {
           consentChecked: consent.sms,
           consentText: props.consentText,
           consentVersion: props.consentVersion,
+          marketingConsent: consent.marketingPayload(),
           page: props.page,
           ...ctx,
         }),
@@ -357,6 +367,22 @@ function QuizLeadForm(props: LeadFormProps) {
               </p>
             </div>
 
+            {props.marketingConsent ? (
+              <div className="gsk-consent gsk-marketing-consent">
+                <label htmlFor={fid("marketing-consent")} className="gsk-consent-label">
+                  <input
+                    id={fid("marketing-consent")}
+                    name="marketing_consent"
+                    type="checkbox"
+                    checked={consent.marketing}
+                    onChange={(e) => consent.setMarketing(e.target.checked)}
+                    className="gsk-checkbox"
+                  />
+                  <span className="gsk-consent-text">{props.marketingConsent.text}</span>
+                </label>
+              </div>
+            ) : null}
+
             {status === "error" ? <SubmitError {...props} callHref={callHref} className="gsk-error-box" /> : null}
 
             <button type="submit" data-track="form_submit_click" disabled={status === "sending"} className="gsk-btn gsk-btn-brand gsk-submit">
@@ -422,6 +448,7 @@ function SingleLeadForm(props: LeadFormProps) {
           consentChecked: consent.sms,
           consentText: props.consentText,
           consentVersion: props.consentVersion,
+          marketingConsent: consent.marketingPayload(),
           page: props.page,
           ...ctx,
         }),
@@ -526,6 +553,24 @@ function SingleLeadForm(props: LeadFormProps) {
             <ConsentError id={fid("consent-error")} message={consent.errors.sms} className="gsk-single-error" />
             </div>
 
+            {props.marketingConsent ? (
+              <div className="gsk-single-consent-wrap">
+                <div className="gsk-single-consent gsk-single-marketing-consent">
+                  <input
+                    id={fid("marketing-consent")}
+                    name="marketing_consent"
+                    type="checkbox"
+                    checked={consent.marketing}
+                    onChange={(e) => consent.setMarketing(e.target.checked)}
+                    className="gsk-single-checkbox"
+                  />
+                  <label htmlFor={fid("marketing-consent")} className="gsk-single-consent-text">
+                    {props.marketingConsent.text}
+                  </label>
+                </div>
+              </div>
+            ) : null}
+
             {status === "error" ? <SubmitError {...props} callHref={callHref} className="gsk-single-alert" /> : null}
 
             <button type="submit" data-track="form_submit_click" disabled={status === "sending"} className="gsk-single-submit">
@@ -607,10 +652,12 @@ function Honeypot(props: { id: string }) {
   );
 }
 
-/** State, validation and payload bits for the SMS and contact consent boxes. */
+/** State, validation and payload bits for the SMS, contact and marketing consent boxes. */
 function useConsent(props: LeadFormProps) {
   const [sms, setSms] = useState(false);
   const [contact, setContact] = useState(false);
+  // Marketing box: unchecked by default and never validated, so it can never block a submit.
+  const [marketing, setMarketing] = useState(false);
   const [shown, setShown] = useState(false);
   const errors = validateConsent({ consentRequired: props.consentRequired, contactConsent: props.contactConsent, state: { sms, contact } });
   return {
@@ -625,6 +672,9 @@ function useConsent(props: LeadFormProps) {
       return errors.contact ? "contact" : errors.sms ? "sms" : null;
     },
     answers: () => contactConsentAnswer(props.contactConsent, contact),
+    marketing,
+    setMarketing,
+    marketingPayload: () => marketingConsentPayload(props.marketingConsent, marketing),
   };
 }
 

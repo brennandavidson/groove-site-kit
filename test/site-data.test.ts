@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { clearSiteDataCache, getSiteData, parseSiteData } from "../src/site-data.js";
-import { PORTAL, SITE, jsonResponse, sitesFetch } from "./fixtures";
+import { MARKETING, PORTAL, SITE, SITE_MARKETING, jsonResponse, sitesFetch } from "./fixtures";
 
 beforeEach(() => {
   clearSiteDataCache();
@@ -55,6 +55,18 @@ describe("getSiteData", () => {
 
   it("rejects a payload without consent text", () => {
     expect(() => parseSiteData({ ...SITE, consent: { version: "x", text: "" } })).toThrow(/consent/);
+  });
+
+  it("marketing consent wording is optional: missing or null becomes null, present is kept", () => {
+    const { marketingConsent: _, ...withoutMarketing } = SITE;
+    expect(parseSiteData(withoutMarketing).marketingConsent).toBeNull();
+    expect(parseSiteData({ ...SITE, marketingConsent: null }).marketingConsent).toBeNull();
+    expect(parseSiteData(SITE_MARKETING).marketingConsent).toEqual(MARKETING);
+  });
+
+  it("rejects malformed marketing consent wording", () => {
+    expect(() => parseSiteData({ ...SITE, marketingConsent: { version: "2026-10-20", text: "" } })).toThrow(/marketingConsent/);
+    expect(() => parseSiteData({ ...SITE, marketingConsent: { text: MARKETING.text } })).toThrow(/marketingConsent/);
   });
 
   it("accepts the documented nulls", () => {

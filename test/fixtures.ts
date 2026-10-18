@@ -21,8 +21,19 @@ export const SITE: SiteData = {
     version: "2026-10-01",
     text: "By checking this box, you agree to receive calls and texts from Ash Cooling & Heating about your request, including automated messages. Message and data rates may apply. Reply STOP to opt out. Consent is not a condition of purchase.",
   },
+  // Portals before build 13 send no marketing wording: the default, so forms show no marketing box.
+  marketingConsent: null,
   reviews: { rating: 4.9, count: 212, source: "Google" },
 };
+
+/** Marketing box wording as the portal sends it (GET /api/sites/<slug> marketingConsent). */
+export const MARKETING = {
+  version: "2026-10-20",
+  text: "Yes, text me occasional offers and seasonal reminders from Ash Cooling & Heating. Up to 4 msgs/month. Message and data rates may apply. Reply STOP to opt out. Consent is not a condition of purchase.",
+};
+
+/** Site data from a portal that sends marketing consent wording. */
+export const SITE_MARKETING: SiteData = { ...SITE, marketingConsent: MARKETING };
 
 export function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
