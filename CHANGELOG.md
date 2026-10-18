@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.1 (2026-10-19)
+- LeadForm sends `consent.version` (the portal keeps it with the agreed text as the legal record).
+- LeadForm title is an `<h2>` (no skipped heading levels).
+- Legal pages with `standalone={false}` render without their own `<main>`, so the site layout owns the landmark.
+
 ## v0.1.0 (2026-10-17)
 
 First release. Ported from groove-portal `src/sites` (LeadForm, consent, tracker, legal pages).

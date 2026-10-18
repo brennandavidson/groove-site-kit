@@ -82,7 +82,7 @@ describe("LeadForm", () => {
       zip: "85201",
       email: "jamie@example.com",
       answers: { system_age: "15+ years", timeline: "ASAP" },
-      consent: { checked: true, text: SITE.consent.text },
+      consent: { checked: true, text: SITE.consent.text, version: SITE.consent.version },
       page: "independent",
       visitorId: "vid_123",
       attribution: groove.attribution(),
@@ -111,7 +111,7 @@ describe("LeadForm", () => {
     await user.click(screen.getByRole("button", { name: "Get my free estimate" }));
     await screen.findByText("Got it, Jamie.");
     const body = JSON.parse(String((fetchMock.mock.calls[0] as [string, RequestInit])[1].body));
-    expect(body.consent).toEqual({ checked: false, text: SITE.consent.text });
+    expect(body.consent).toEqual({ checked: false, text: SITE.consent.text, version: SITE.consent.version });
   });
 
   it("tracks form_start, form_step and form_submit with no PII", async () => {
@@ -202,5 +202,12 @@ describe("LeadForm", () => {
     expect(screen.getByRole("link", { name: "SMS terms" }).getAttribute("href")).toBe("/terms");
     expect(screen.getByRole("link", { name: "Privacy policy" }).getAttribute("href")).toBe("/privacy");
     expect((screen.getByRole("checkbox") as HTMLInputElement).checked).toBe(false);
+  });
+});
+
+describe("LeadForm headings", () => {
+  it("titles the form with an h2 so heading levels don't skip", () => {
+    render(<LeadForm {...BASE} />);
+    expect(screen.getByRole("heading", { level: 2, name: BASE.title ?? "Get your free estimate" })).toBeTruthy();
   });
 });

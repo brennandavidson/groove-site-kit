@@ -1,6 +1,6 @@
 ---
 // Shell for the legal pages. Standalone renders a full document; standalone={false} renders
-// only the <main> so a site can wrap it in its own layout.
+// just the content (no <main>) so a site can wrap it in its own layout.
 import "../styles/kit.css";
 
 export type Props = {
@@ -33,10 +33,11 @@ const { title, heading, who, standalone = true, description } = Astro.props;
       </body>
     </html>
   ) : (
-    <main class="gsk-legal">
+    // Inside the site's layout, which owns <main>: no second landmark.
+    <div class="gsk-legal">
       <h1>{heading}</h1>
       <p class="gsk-legal-who">{who}</p>
       <slot />
-    </main>
+    </div>
   )
 }

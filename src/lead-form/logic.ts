@@ -13,7 +13,7 @@ export type LeadPayload = {
   zip: string;
   email?: string;
   answers: Record<string, string>;
-  consent: { checked: boolean; text: string };
+  consent: { checked: boolean; text: string; version?: string };
   page: string;
   visitorId?: string;
   attribution: Record<string, unknown>;
@@ -68,6 +68,8 @@ export function buildLeadPayload(input: {
   answers: Record<string, string>;
   consentChecked: boolean;
   consentText: string;
+  /** Which consent wording was shown (portal site data); the portal keeps it with the text. */
+  consentVersion?: string;
   page: string;
   visitorId?: string | null;
   attribution?: Record<string, unknown> | null;
@@ -80,7 +82,7 @@ export function buildLeadPayload(input: {
     zip: input.values.zip.trim().slice(0, 5),
     ...(email ? { email } : {}),
     answers: input.answers,
-    consent: { checked: input.consentChecked, text: input.consentText },
+    consent: { checked: input.consentChecked, text: input.consentText, ...(input.consentVersion ? { version: input.consentVersion } : {}) },
     page: input.page,
     ...(input.visitorId ? { visitorId: input.visitorId } : {}),
     attribution: input.attribution ?? {},

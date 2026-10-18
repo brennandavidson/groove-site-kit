@@ -90,6 +90,7 @@ describe("legal pages carry every carrier-required string", () => {
     const html = await render(TermsPage, { standalone: false }, "/terms");
     expect(html).not.toContain("<html");
     expect(html).toContain('class="gsk-legal"');
+    expect(html).not.toContain("<main"); // the site layout owns <main>
   });
 });
 

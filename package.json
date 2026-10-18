@@ -1,6 +1,6 @@
 {
   "name": "groove-site-kit",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Shared plumbing for Design Groove client sites: lead form, consent, tracker, legal pages, call numbers, site data.",
   "private": true,
   "type": "module",

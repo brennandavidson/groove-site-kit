@@ -147,6 +147,7 @@ export function LeadForm(props: LeadFormProps) {
       answers,
       consentChecked: consent,
       consentText: props.consentText,
+      consentVersion: props.consentVersion,
       page: props.page,
       visitorId: window.groove?.visitorId ?? readCookie("gp_vid"),
       attribution: (window.groove?.attribution() as Record<string, unknown> | undefined) ?? {},
@@ -185,9 +186,9 @@ export function LeadForm(props: LeadFormProps) {
   return (
     <section id={props.id ?? "estimate"} aria-labelledby={titleId} className="gsk-form">
       <div className="gsk-form-head">
-        <p id={titleId} className="gsk-form-title">
+        <h2 id={titleId} className="gsk-form-title">
           {props.title ?? "Get your free estimate"}
-        </p>
+        </h2>
         {props.subtitle ? <p className="gsk-form-subtitle">{props.subtitle}</p> : null}
         {props.proof ? <p className="gsk-form-proof">{props.proof}</p> : null}
         {total > 1 ? (
