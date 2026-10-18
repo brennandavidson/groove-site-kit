@@ -24,11 +24,7 @@ Requires Astro 7+ (Node 22.22+), React 19, `@astrojs/react`.
 
 Peer deps the site already has: `astro`, `react`, `react-dom`, plus `@astrojs/react`.
 
-The repo is private. Locally, your git credentials cover it. On Vercel, set a `GH_TOKEN` env var (fine-grained, read-only on this repo) and use this Install Command so npm can clone it:
-
-```sh
-git config --global url."https://x-access-token:${GH_TOKEN}@github.com/".insteadOf "ssh://git@github.com/" && git config --global --add url."https://x-access-token:${GH_TOKEN}@github.com/".insteadOf "https://github.com/" && npm install
-```
+The repo is public, so Vercel, CI and anyone working on a client repo install it with a plain `npm install`. No tokens. It holds no secrets: only the form, tracker, consent wording and legal page templates. Client data and keys live in the portal.
 
 ## Env vars
 
