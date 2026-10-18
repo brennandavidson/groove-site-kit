@@ -1,0 +1,30 @@
+---
+// Terms & Conditions with the SMS Terms section carriers look for. Plain template; have counsel review.
+import LegalLayout from "./LegalLayout.astro";
+import { getSiteData } from "../site-data.js";
+import { LEGAL_PATHS } from "../paths.js";
+import { CARRIER, LEGAL_TITLES, legalTitle, legalWho } from "../legal";
+
+export type Props = { standalone?: boolean };
+
+const site = await getSiteData();
+const who = legalWho(site);
+const name = site.client.name;
+const phone = site.client.phoneDisplay;
+---
+
+<LegalLayout title={legalTitle("terms", site)} heading={LEGAL_TITLES.terms} who={who} standalone={Astro.props.standalone}>
+  <slot name="head" slot="head" />
+  <p>These terms cover {who}'s website and request forms. By using them you agree to these terms.</p>
+  <h2 id="sms-terms">SMS Terms</h2>
+  <p>
+    <strong>Program:</strong> {name} customer texts. When you check the consent box on our request form, you agree to receive calls and text messages from {who} about your service request, appointments and related follow-ups, including messages sent by automated systems. See <a href={LEGAL_PATHS.smsOptIn}>how text opt-in works</a>.
+  </p>
+  <p>Message frequency varies. {CARRIER.rates} Consent is not a condition of purchase.</p>
+  <p>
+    Reply <strong>STOP</strong> to stop receiving texts at any time. Reply <strong>HELP</strong> for help{phone ? `, or call ${phone}` : ""}.
+  </p>
+  <p>
+    Carriers are not liable for delayed or undelivered messages. See our <a href={LEGAL_PATHS.privacy}>Privacy Policy</a> for how we handle your information. {CARRIER.noSharing}
+  </p>
+</LegalLayout>

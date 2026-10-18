@@ -1,0 +1,24 @@
+---
+// First-party tracker + Meta pixel. Put it in <head> so window.groove exists before islands hydrate.
+import { getSiteData } from "../site-data.js";
+import { slugFromPath } from "../paths.js";
+import { trackerScript } from "../tracker";
+
+export type Props = {
+  /** Page slug. Defaults to the last path segment ("home" for "/"). */
+  page?: string;
+  /** Set false to skip the Meta pixel on this page. */
+  pixel?: boolean;
+};
+
+const { page, pixel = true } = Astro.props;
+const site = await getSiteData();
+const script = trackerScript({
+  endpoint: site.beacon.url,
+  client: site.client.slug,
+  page: page ?? slugFromPath(Astro.url.pathname),
+  pixelId: pixel ? site.pixelId : null,
+});
+---
+
+<script is:inline id="gsk-tracker" set:html={script} />

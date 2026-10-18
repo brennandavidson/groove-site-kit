@@ -1,0 +1,28 @@
+---
+// tel: link to this page's tracking number, falling back to the main number.
+// The tracker logs a call_click (and a pixel Contact) for every tel: link.
+import type { HTMLAttributes } from "astro/types";
+import { getSiteData } from "../site-data.js";
+import { slugFromPath } from "../paths.js";
+import { numberFor } from "../numbers";
+
+export type Props = Omit<HTMLAttributes<"a">, "href"> & {
+  /** Page slug. Defaults to the last path segment ("home" for "/"). */
+  page?: string;
+  /** data-track id reported with call_click. Default "call". */
+  track?: string;
+};
+
+const { page, track = "call", ...attrs } = Astro.props;
+const site = await getSiteData();
+const number = numberFor(site, page ?? slugFromPath(Astro.url.pathname));
+const hasSlot = Astro.slots.has("default");
+---
+
+{
+  number && (
+    <a href={`tel:${number.e164}`} data-track={track} data-gsk-call={number.tracking ? "tracking" : "main"} {...attrs}>
+      {hasSlot ? <slot /> : number.display}
+    </a>
+  )
+}

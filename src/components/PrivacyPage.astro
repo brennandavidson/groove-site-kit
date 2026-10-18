@@ -1,0 +1,25 @@
+---
+// Carrier-ready privacy policy (A2P 10DLC). Plain template; have counsel review.
+import LegalLayout from "./LegalLayout.astro";
+import { getSiteData } from "../site-data.js";
+import { CARRIER, LEGAL_TITLES, contactLine, legalTitle, legalWho } from "../legal";
+
+export type Props = { standalone?: boolean };
+
+const site = await getSiteData();
+const who = legalWho(site);
+---
+
+<LegalLayout title={legalTitle("privacy", site)} heading={LEGAL_TITLES.privacy} who={who} standalone={Astro.props.standalone}>
+  <slot name="head" slot="head" />
+  <p>
+    {who} collects the information you give us on our forms (such as your name, phone number, email, ZIP code and your answers) and basic details about your visit (such as the page you came from). We use it to contact you about your request, schedule service, and improve our advertising.
+  </p>
+  <p>
+    <strong>{CARRIER.noSharing}</strong> Mobile numbers and text message opt-in consent are never shared with or sold to third parties or affiliates for marketing or promotional purposes.
+  </p>
+  <p>
+    We share information only with service providers who help us run our business (for example our scheduling, phone, call transcription and advertising tools), and only for that purpose. Calls may be recorded and transcribed so we can follow up on your request. Advertising platforms may receive hashed (scrambled) contact details to measure which ads lead to appointments.
+  </p>
+  <p>To see, correct or delete the information we have about you, {contactLine(site)}.</p>
+</LegalLayout>

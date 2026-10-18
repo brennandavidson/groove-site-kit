@@ -1,0 +1,42 @@
+---
+// Shell for the legal pages. Standalone renders a full document; standalone={false} renders
+// only the <main> so a site can wrap it in its own layout.
+import "../styles/kit.css";
+
+export type Props = {
+  title: string;
+  heading: string;
+  who: string;
+  standalone?: boolean;
+  description?: string;
+};
+
+const { title, heading, who, standalone = true, description } = Astro.props;
+---
+
+{
+  standalone ? (
+    <html lang="en">
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>{title}</title>
+        {description && <meta name="description" content={description} />}
+        <slot name="head" />
+      </head>
+      <body style="margin:0;background:var(--gsk-card);font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif">
+        <main class="gsk-legal">
+          <h1>{heading}</h1>
+          <p class="gsk-legal-who">{who}</p>
+          <slot />
+        </main>
+      </body>
+    </html>
+  ) : (
+    <main class="gsk-legal">
+      <h1>{heading}</h1>
+      <p class="gsk-legal-who">{who}</p>
+      <slot />
+    </main>
+  )
+}

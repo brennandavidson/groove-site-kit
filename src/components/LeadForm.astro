@@ -1,0 +1,39 @@
+---
+// Lead form island with site data filled in at build time. Hydrates on load by default.
+import { LeadForm as Island, type LeadFormProps } from "../lead-form/LeadForm";
+import { getSiteData } from "../site-data.js";
+import { LEGAL_PATHS, slugFromPath } from "../paths.js";
+import { numberFor } from "../numbers";
+import "../styles/kit.css";
+
+type SiteDataProps = "business" | "phoneDisplay" | "callE164" | "callDisplay" | "intakeUrl" | "intakeKey" | "consentText" | "consentVersion";
+
+export type Props = Omit<LeadFormProps, SiteDataProps | "page"> & {
+  /** Page slug. Defaults to the last path segment ("home" for "/"). */
+  page?: string;
+  /** When the island hydrates. Default "load". */
+  hydrate?: "load" | "idle" | "visible";
+};
+
+const { page: pageProp, hydrate = "load", ...rest } = Astro.props;
+const site = await getSiteData();
+const page = pageProp ?? slugFromPath(Astro.url.pathname);
+const number = numberFor(site, page);
+
+const props: LeadFormProps = {
+  privacyUrl: LEGAL_PATHS.privacy,
+  termsUrl: LEGAL_PATHS.terms,
+  ...rest,
+  page,
+  business: site.client.name,
+  phoneDisplay: site.client.phoneDisplay,
+  callE164: number?.e164 ?? null,
+  callDisplay: number?.display ?? null,
+  intakeUrl: site.intake.url,
+  intakeKey: site.intake.key,
+  consentText: site.consent.text,
+  consentVersion: site.consent.version,
+};
+---
+
+{hydrate === "idle" ? <Island client:idle {...props} /> : hydrate === "visible" ? <Island client:visible {...props} /> : <Island client:load {...props} />}

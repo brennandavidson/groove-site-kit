@@ -1,0 +1,65 @@
+---
+// Public text opt-in page for carrier review. Shows the form's contact step without filling
+// anything in, with the exact consent text the live form shows, and what happens after submit.
+import LegalLayout from "./LegalLayout.astro";
+import { getSiteData } from "../site-data.js";
+import { LEGAL_PATHS } from "../paths.js";
+import { CARRIER, LEGAL_TITLES, legalTitle, legalWho } from "../legal";
+
+export type Props = {
+  standalone?: boolean;
+  /** Path of a page with the live form. Default "/". */
+  formPath?: string;
+  /** Match the live form's button. Default "Get my free estimate". */
+  submitLabel?: string;
+};
+
+const { standalone, formPath = "/", submitLabel = "Get my free estimate" } = Astro.props;
+const site = await getSiteData();
+const who = legalWho(site);
+const name = site.client.name;
+const phone = site.client.phoneDisplay;
+const formUrl = Astro.site ? new URL(formPath, Astro.site).href : formPath;
+const formLabel = formUrl.replace(/^https?:\/\//, "").replace(/\/$/, "") || "this site";
+---
+
+<LegalLayout title={legalTitle("smsOptIn", site)} heading={LEGAL_TITLES.smsOptIn} who={who} standalone={standalone}>
+  <slot name="head" slot="head" />
+  <p>
+    Homeowners request service from {who} on our website form at <a href={formUrl}>{formLabel}</a>. The last step of the form asks for contact details and shows an <strong>unchecked, optional</strong> consent checkbox. We only text people who check it.
+  </p>
+  <p class="gsk-legal-note">This is the form's contact step, exactly as homeowners see it:</p>
+  <div class="gsk-optin-mock" aria-label="Copy of the request form's contact step" role="figure">
+    <div class="gsk-optin-fields">
+      {
+        ["First name", "Mobile phone", "Zip code", "Email (optional)"].map((f) => (
+          <div class="gsk-optin-field">
+            <span>{f}</span>
+            <span class="gsk-optin-input" />
+          </div>
+        ))
+      }
+    </div>
+    <div class="gsk-consent">
+      <div class="gsk-consent-label">
+        <span aria-hidden="true" class="gsk-consent-box"></span>
+        <span class="gsk-consent-text" data-consent-version={site.consent.version}>{site.consent.text}</span>
+      </div>
+      <p class="gsk-consent-links">
+        <a href={LEGAL_PATHS.terms}>SMS terms</a> and <a href={LEGAL_PATHS.privacy}>Privacy policy</a>
+      </p>
+    </div>
+    <div class="gsk-legal-button">{submitLabel}</div>
+  </div>
+  <h2>After they submit</h2>
+  <p>People who checked the box get one text right away, from {name}:</p>
+  <p class="gsk-legal-quote">
+    Hi Jamie, this is {name}. We got your request. We'll call you in a few minutes{phone ? ` from ${phone}` : ""}. You can also reply here. Reply STOP to opt out.
+  </p>
+  <p>
+    Later texts are about that request only: replies to their questions and reminders about the estimate appointment they booked. Message frequency varies. {CARRIER.rates} Reply STOP to opt out at any time, HELP for help.
+  </p>
+  <p>
+    <a href={LEGAL_PATHS.terms}>Terms &amp; Conditions (SMS Terms)</a> | <a href={LEGAL_PATHS.privacy}>Privacy Policy</a>
+  </p>
+</LegalLayout>

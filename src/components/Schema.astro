@@ -1,0 +1,69 @@
+---
+// LocalBusiness JSON-LD from site data. Defaults to HVACBusiness.
+import { getSiteData } from "../site-data.js";
+import { scriptSafeJson } from "../tracker";
+
+export type Props = {
+  /** schema.org type. Default "HVACBusiness". */
+  type?: string;
+  /** Canonical business URL. Defaults to astro.config `site`. */
+  url?: string;
+  image?: string;
+  logo?: string;
+  priceRange?: string;
+  description?: string;
+  streetAddress?: string;
+  postalCode?: string;
+  areaServed?: string[];
+  /** e.g. ["Mo-Fr 07:00-18:00", "Sa 08:00-14:00"] */
+  openingHours?: string[];
+  sameAs?: string[];
+  /**
+   * Adds aggregateRating from the portal's review summary. Off by default: Google treats
+   * self-served LocalBusiness ratings as ineligible for stars and may flag them.
+   */
+  rating?: boolean;
+  /** Merged over the generated object last. */
+  extra?: Record<string, unknown>;
+};
+
+const p = Astro.props;
+const site = await getSiteData();
+const c = site.client;
+const url = p.url ?? (Astro.site ? Astro.site.href : undefined);
+
+const address =
+  c.city || c.state || p.streetAddress
+    ? {
+        "@type": "PostalAddress",
+        ...(p.streetAddress ? { streetAddress: p.streetAddress } : {}),
+        ...(c.city ? { addressLocality: c.city } : {}),
+        ...(c.state ? { addressRegion: c.state } : {}),
+        ...(p.postalCode ? { postalCode: p.postalCode } : {}),
+        addressCountry: "US",
+      }
+    : undefined;
+
+const data: Record<string, unknown> = {
+  "@context": "https://schema.org",
+  "@type": p.type ?? "HVACBusiness",
+  name: c.name,
+  ...(c.legalName && c.legalName !== c.name ? { legalName: c.legalName } : {}),
+  ...(url ? { url, "@id": `${url.replace(/\/$/, "")}/#business` } : {}),
+  ...(c.phoneE164 ? { telephone: c.phoneE164 } : {}),
+  ...(address ? { address } : {}),
+  ...(p.description ? { description: p.description } : {}),
+  ...(p.image ? { image: p.image } : {}),
+  ...(p.logo ? { logo: p.logo } : {}),
+  ...(p.priceRange ? { priceRange: p.priceRange } : {}),
+  ...(p.areaServed?.length ? { areaServed: p.areaServed.map((name) => ({ "@type": "City", name })) } : {}),
+  ...(p.openingHours?.length ? { openingHours: p.openingHours } : {}),
+  ...(p.sameAs?.length ? { sameAs: p.sameAs } : {}),
+  ...(p.rating && site.reviews && site.reviews.count > 0
+    ? { aggregateRating: { "@type": "AggregateRating", ratingValue: site.reviews.rating, reviewCount: site.reviews.count } }
+    : {}),
+  ...p.extra,
+};
+---
+
+<script is:inline type="application/ld+json" set:html={scriptSafeJson(data)} />
