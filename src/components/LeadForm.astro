@@ -6,7 +6,7 @@ import { LEGAL_PATHS, slugFromPath } from "../paths.js";
 import { numberFor } from "../numbers";
 import "../styles/kit.css";
 
-type SiteDataProps = "business" | "phoneDisplay" | "callE164" | "callDisplay" | "intakeUrl" | "intakeKey" | "consentText" | "consentVersion";
+type SiteDataProps = "business" | "phoneDisplay" | "callE164" | "callDisplay" | "intakeUrl" | "intakeKey" | "consentText" | "consentVersion" | "marketingConsent";
 
 export type Props = Omit<LeadFormProps, SiteDataProps | "page" | "className" | "footnote"> & {
   /** Page slug. Defaults to the last path segment ("home" for "/"). */
@@ -19,13 +19,21 @@ export type Props = Omit<LeadFormProps, SiteDataProps | "page" | "className" | "
   preview?: boolean;
   /** Page number to offer in errors and the thank-you call button until the portal has one (see CallNumber). */
   fallbackNumber?: string;
+  /**
+   * The separate, optional, unchecked marketing texts box, with the portal's wording (site data
+   * marketingConsent). Default: shown when site data has that wording. false: never shown. Only turn
+   * it on when the client's texting registration covers marketing.
+   */
+  marketingConsent?: boolean;
 };
 
-const { page: pageProp, hydrate = "load", class: className, preview = false, fallbackNumber, ...rest } = Astro.props;
+const { page: pageProp, hydrate = "load", class: className, preview = false, fallbackNumber, marketingConsent, ...rest } = Astro.props;
 const site = await getSiteData();
 const page = pageProp ?? slugFromPath(Astro.url.pathname);
 const number = numberFor(site, page, fallbackNumber);
 const hasFootnote = Astro.slots.has("footnote");
+const marketing = marketingConsent === false ? null : site.marketingConsent;
+if (marketingConsent === true && !site.marketingConsent) console.warn("[groove-site-kit] LeadForm marketingConsent is on, but the portal sent no marketing consent wording. No marketing box is shown.");
 
 const props: LeadFormProps = {
   privacyUrl: LEGAL_PATHS.privacy,
@@ -41,6 +49,7 @@ const props: LeadFormProps = {
   intakeKey: preview ? null : site.intake.key,
   consentText: site.consent.text,
   consentVersion: site.consent.version,
+  marketingConsent: marketing,
 };
 ---
 

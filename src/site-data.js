@@ -90,6 +90,8 @@ export function parseSiteData(input) {
   need(d.beacon && str(d.beacon.url), "beacon.url");
   need(strOrNull(d.pixelId), "pixelId");
   need(d.consent && str(d.consent.text) && str(d.consent.version), "consent");
+  const mc = d.marketingConsent;
+  need(mc == null || (str(mc.text) && str(mc.version)), "marketingConsent");
   const numbers = d.numbers ?? {};
   need(typeof numbers === "object" && !Array.isArray(numbers), "numbers");
   for (const [k, n] of Object.entries(numbers)) need(n && str(/** @type {any} */ (n).e164) && str(/** @type {any} */ (n).display), `numbers.${k}`);
@@ -111,6 +113,7 @@ export function parseSiteData(input) {
     pixelId: d.pixelId ?? null,
     numbers,
     consent: { version: d.consent.version, text: d.consent.text },
+    marketingConsent: mc ? { version: mc.version, text: mc.text } : null,
     reviews: r ? { rating: r.rating, count: r.count, source: r.source ?? "Google" } : null,
   };
 }

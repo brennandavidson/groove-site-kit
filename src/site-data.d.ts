@@ -16,6 +16,11 @@ export type SiteData = {
   /** Tracking numbers keyed by page slug. */
   numbers: Record<string, TrackingNumber>;
   consent: { version: string; text: string };
+  /**
+   * Wording for the separate, optional, unchecked marketing texts box (offers, seasonal reminders).
+   * Null when the portal sends none (portals before build 13): the form shows no marketing box.
+   */
+  marketingConsent: { version: string; text: string } | null;
   reviews: { rating: number; count: number; source: string } | null;
 };
 

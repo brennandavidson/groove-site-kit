@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.3.0 (2026-10-18)
+
+Marketing consent. Existing sites are unchanged: the box only shows when the portal sends marketing wording (build 13). Once it does, every site on v0.3.0 shows the box unless it passes `marketingConsent={false}`, so set that on sites whose texting registration does not cover marketing yet.
+
+- Site data: optional `marketingConsent { version, text }` (portal build 13). Missing or null is fine; present but malformed fails the build like `consent`.
+- LeadForm (both layouts): a SEPARATE marketing texts checkbox below the SMS consent box, with the portal's exact wording. Optional, unchecked by default, never required, never bundled with the request boxes. Hooks: `.gsk-marketing-consent` (quiz), `.gsk-single-marketing-consent` (single).
+- Payload: `marketingConsent: { checked, text, version }` next to `consent` whenever the box is shown (checked or not). No box, no field.
+- LeadForm.astro and SmsOptInPage `marketingConsent` prop: unset follows site data, `false` hides the box even when the portal sends wording, `true` shows it (warns when the portal sends none). Raw island takes `marketingConsent={{ text, version }}`.
+- SmsOptInPage: with marketing consent on, describes the separate unchecked optional marketing box, shows its exact text (`data-marketing-consent-version`) and says only people who check it get marketing texts. Unchanged otherwise.
+- Exports: `MarketingConsent` type, `marketingConsentPayload()`.
+
 ## v0.2.0 (2026-10-17)
 
 All additions are opt-in. The quiz layout, its markup and its defaults are unchanged.

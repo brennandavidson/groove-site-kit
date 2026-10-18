@@ -16,6 +16,8 @@ export type LeadPayload = {
   email?: string;
   answers: Record<string, string>;
   consent: { checked: boolean; text: string; version?: string };
+  /** Only when the form shows the separate marketing box: checked or not, with the exact wording shown. */
+  marketingConsent?: { checked: boolean; text: string; version?: string };
   page: string;
   visitorId?: string;
   attribution: Record<string, unknown>;
@@ -72,6 +74,8 @@ export function buildLeadPayload(input: {
   consentText: string;
   /** Which consent wording was shown (portal site data); the portal keeps it with the text. */
   consentVersion?: string;
+  /** The marketing box, when the form shows one (see marketingConsentPayload). */
+  marketingConsent?: LeadPayload["marketingConsent"];
   page: string;
   visitorId?: string | null;
   attribution?: Record<string, unknown> | null;
@@ -85,6 +89,7 @@ export function buildLeadPayload(input: {
     ...(email ? { email } : {}),
     answers: input.answers,
     consent: { checked: input.consentChecked, text: input.consentText, ...(input.consentVersion ? { version: input.consentVersion } : {}) },
+    ...(input.marketingConsent ? { marketingConsent: input.marketingConsent } : {}),
     page: input.page,
     ...(input.visitorId ? { visitorId: input.visitorId } : {}),
     attribution: input.attribution ?? {},
@@ -216,6 +221,7 @@ export function buildFieldsPayload(input: {
   leadEventId: string;
   /** Merged into answers (contact consent). */
   extraAnswers?: Record<string, string>;
+  marketingConsent?: LeadPayload["marketingConsent"];
 }): LeadPayload {
   const get = (type: FormField["type"]) => {
     const f = input.fields.find((x) => x.type === type);
@@ -238,6 +244,7 @@ export function buildFieldsPayload(input: {
     ...(email ? { email } : {}),
     answers,
     consent: { checked: input.consentChecked, text: input.consentText, ...(input.consentVersion ? { version: input.consentVersion } : {}) },
+    ...(input.marketingConsent ? { marketingConsent: input.marketingConsent } : {}),
     page: input.page,
     ...(input.visitorId ? { visitorId: input.visitorId } : {}),
     attribution: input.attribution ?? {},
@@ -284,4 +291,17 @@ export function validateConsent(input: { consentRequired?: boolean; contactConse
 /** answers entry for a checked contact consent box. */
 export function contactConsentAnswer(contactConsent: ContactConsent | undefined, checked: boolean): Record<string, string> {
   return contactConsent && checked ? { [contactConsent.label ?? "Contact consent"]: contactConsent.text } : {};
+}
+
+/**
+ * The separate marketing texts box (offers, seasonal reminders). Wording and version come from the
+ * portal (site data `marketingConsent`). Always optional and unchecked by default, never bundled
+ * with the request consent boxes, never needed to submit.
+ */
+export type MarketingConsent = { text: string; version?: string };
+
+/** intake `marketingConsent` for a form that shows the marketing box; undefined when it has none. */
+export function marketingConsentPayload(marketingConsent: MarketingConsent | null | undefined, checked: boolean): LeadPayload["marketingConsent"] {
+  if (!marketingConsent) return undefined;
+  return { checked, text: marketingConsent.text, ...(marketingConsent.version ? { version: marketingConsent.version } : {}) };
 }

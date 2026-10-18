@@ -12,6 +12,6 @@ export { numberFor, formatUsPhone } from "./numbers";
 export type { PhoneNumber } from "./numbers";
 export { trackerScript, scriptSafeJson } from "./tracker";
 export type { TrackerOptions, Attribution, GrooveGlobal, TrackProps } from "./tracker";
-export type { QuizStep, CallTiming, LeadPayload, IntakeResponse, FormField, ContactConsent } from "./lead-form/logic";
-export { resolveFields, splitFullName, buildFieldsPayload, validateFields, validateConsent, DEFAULT_SINGLE_FIELDS } from "./lead-form/logic";
+export type { QuizStep, CallTiming, LeadPayload, IntakeResponse, FormField, ContactConsent, MarketingConsent } from "./lead-form/logic";
+export { resolveFields, splitFullName, buildFieldsPayload, validateFields, validateConsent, marketingConsentPayload, DEFAULT_SINGLE_FIELDS } from "./lead-form/logic";
 export type { LeadFormProps, ThankYouCopy } from "./lead-form/LeadForm";

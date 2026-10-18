@@ -12,7 +12,7 @@ import { SMS_CONSENT_TEMPLATE, smsConsentText } from "../src/consent";
 import { numberFor } from "../src/numbers";
 import { CARRIER } from "../src/legal";
 import { clearSiteDataCache } from "../src/site-data.js";
-import { PORTAL, SITE, sitesFetch } from "./fixtures";
+import { MARKETING, PORTAL, SITE, SITE_MARKETING, sitesFetch } from "./fixtures";
 
 /** Rendered HTML to plain text so assertions match what a reviewer reads. */
 function text(html: string): string {
@@ -93,6 +93,38 @@ describe("legal pages carry every carrier-required string", () => {
     expect(t).toContain("required to send the request");
     expect(t).toContain("unchecked, optional text message consent checkbox");
     expect(t).toContain(SITE.consent.text);
+  });
+
+  it("Text Message Opt-In mentions no marketing box when site data has no marketing wording", async () => {
+    const t = text(await render(SmsOptInPage, { formPath: "/independent" }, "/sms-opt-in"));
+    expect(t).not.toMatch(/marketing/i);
+    expect(t).toContain("We only text people who check the text message consent box.");
+    expect(t).toContain("Later texts are about that request only");
+  });
+
+  it("Text Message Opt-In describes and shows the separate optional marketing box with its exact text", async () => {
+    vi.stubGlobal("fetch", sitesFetch(SITE_MARKETING));
+    const html = await render(SmsOptInPage, { formPath: "/independent", consentRequired: true }, "/sms-opt-in");
+    const t = text(html);
+    expect(t).toContain("separate, unchecked, optional checkbox for marketing texts");
+    expect(t).toContain("It is never required to send the request.");
+    expect(t).toContain("only send marketing texts to people who check the marketing box");
+    expect(t).toContain(MARKETING.text);
+    expect(html).toContain('data-marketing-consent-version="2026-10-20"');
+    expect(html).toContain("gsk-marketing-consent");
+    // The request box is still described as the form has it.
+    expect(t).toContain("unchecked text message consent checkbox that must be checked to send the request");
+    expect(t).toContain(SITE.consent.text);
+    // Marketing box shows after the SMS consent box.
+    expect(t.indexOf(MARKETING.text)).toBeGreaterThan(t.indexOf(SITE.consent.text));
+    expect(t).toContain("people who left it unchecked never get marketing texts");
+  });
+
+  it("Text Message Opt-In marketingConsent={false} hides the marketing box even when site data has it", async () => {
+    vi.stubGlobal("fetch", sitesFetch(SITE_MARKETING));
+    const t = text(await render(SmsOptInPage, { formPath: "/independent", marketingConsent: false }, "/sms-opt-in"));
+    expect(t).not.toMatch(/marketing/i);
+    expect(t).not.toContain(MARKETING.text);
   });
 
   it("falls back to the business name when there is no legal name", async () => {
@@ -212,6 +244,29 @@ describe("LeadForm.astro", () => {
     expect(text(html)).toContain(SITE.consent.text);
     expect(html).toContain("gpk_test_0123456789abcdef");
     expect(html).not.toContain("tok_should_never_render");
+  });
+
+  it("renders no marketing box when site data has no marketing wording", async () => {
+    const html = await render(LeadForm, { page: "independent", steps: [] });
+    expect(html).not.toContain("marketing_consent");
+    expect(html).not.toContain("occasional offers");
+  });
+
+  it("renders the marketing box, unchecked, when site data has marketing wording", async () => {
+    vi.stubGlobal("fetch", sitesFetch(SITE_MARKETING));
+    const html = await render(LeadForm, { page: "independent", steps: [] });
+    expect(html).toContain('name="marketing_consent"');
+    expect(text(html)).toContain(MARKETING.text);
+    const input = html.match(/<input[^>]*name="marketing_consent"[^>]*>/)![0];
+    expect(input).not.toContain("checked");
+    expect(input).not.toContain("required");
+  });
+
+  it("marketingConsent={false} hides the marketing box even when site data has it", async () => {
+    vi.stubGlobal("fetch", sitesFetch(SITE_MARKETING));
+    const html = await render(LeadForm, { page: "independent", steps: [], marketingConsent: false });
+    expect(html).not.toContain("marketing_consent");
+    expect(html).not.toContain("occasional offers");
   });
 
   it("single layout: class hook, footnote slot, fallback number and preview mode", async () => {

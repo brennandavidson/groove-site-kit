@@ -3,8 +3,8 @@ import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LeadForm, type LeadFormProps } from "../src/lead-form/LeadForm";
-import { CONSENT_REQUIRED_ERROR, CONTACT_CONSENT_ERROR, validateConsent, type ContactConsent } from "../src/lead-form/logic";
-import { SITE, jsonResponse } from "./fixtures";
+import { CONSENT_REQUIRED_ERROR, CONTACT_CONSENT_ERROR, marketingConsentPayload, validateConsent, type ContactConsent } from "../src/lead-form/logic";
+import { MARKETING, SITE, jsonResponse } from "./fixtures";
 
 const CONTACT: ContactConsent = { text: "I agree to be contacted about my request by phone and email." };
 
@@ -32,6 +32,8 @@ afterEach(() => cleanup());
 const sent = () => JSON.parse(String((fetchMock.mock.calls[0] as [string, RequestInit])[1].body));
 const smsBox = () => screen.getByRole("checkbox", { name: /By checking this box/ });
 const contactBox = () => screen.getByRole("checkbox", { name: /I agree to be contacted/ });
+const marketingBox = () => screen.getByRole("checkbox", { name: /occasional offers and seasonal reminders/ });
+const queryMarketingBox = () => screen.queryByRole("checkbox", { name: /occasional offers and seasonal reminders/ });
 
 async function fillSingle(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText("Full name"), "Jamie Lee");
@@ -101,6 +103,87 @@ describe.each([
     await user.click(screen.getByRole("button", { name: "Send" }));
     await screen.findByText(/Got it/);
     expect(sent().answers).not.toHaveProperty("Contact OK");
+  });
+});
+
+describe.each([
+  ["single", SINGLE, fillSingle],
+  ["quiz", QUIZ, fillQuiz],
+] as const)("marketing consent box (%s layout)", (_name, base, fill) => {
+  it("is absent by default and nothing marketing is sent", async () => {
+    const user = userEvent.setup();
+    render(<LeadForm {...base} />);
+    expect(queryMarketingBox()).toBeNull();
+    expect(screen.getAllByRole("checkbox")).toHaveLength(1);
+    await fill(user);
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    await screen.findByText(/Got it/);
+    expect(sent()).not.toHaveProperty("marketingConsent");
+  });
+
+  it("is absent when marketingConsent is null", () => {
+    render(<LeadForm {...base} marketingConsent={null} />);
+    expect(queryMarketingBox()).toBeNull();
+  });
+
+  it("when enabled: a separate box below the SMS box, unchecked and not required, with the exact text", () => {
+    render(<LeadForm {...base} marketingConsent={MARKETING} />);
+    const box = marketingBox() as HTMLInputElement;
+    expect(box.checked).toBe(false);
+    expect(box.hasAttribute("required")).toBe(false);
+    expect(box.name).toBe("marketing_consent");
+    expect(box).not.toBe(smsBox());
+    expect(screen.getByText(MARKETING.text)).toBeTruthy();
+    // Order: SMS consent box first, marketing box after it.
+    const boxes = screen.getAllByRole("checkbox");
+    expect(boxes.indexOf(box)).toBe(boxes.indexOf(smsBox()) + 1);
+  });
+
+  it("submits with the marketing box unchecked and records checked=false", async () => {
+    const user = userEvent.setup();
+    render(<LeadForm {...base} marketingConsent={MARKETING} />);
+    await fill(user);
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    await screen.findByText(/Got it/);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(sent().marketingConsent).toEqual({ checked: false, text: MARKETING.text, version: MARKETING.version });
+  });
+
+  it("posts checked=true when ticked, independent of the SMS box", async () => {
+    const user = userEvent.setup();
+    render(<LeadForm {...base} marketingConsent={MARKETING} />);
+    await fill(user);
+    await user.click(marketingBox());
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    await screen.findByText(/Got it/);
+    const body = sent();
+    expect(body.marketingConsent).toEqual({ checked: true, text: MARKETING.text, version: MARKETING.version });
+    expect(body.consent).toEqual({ checked: false, text: SITE.consent.text, version: SITE.consent.version });
+  });
+
+  it("never satisfies a required SMS box and never blocks submit itself", async () => {
+    const user = userEvent.setup();
+    render(<LeadForm {...base} consentRequired marketingConsent={MARKETING} />);
+    await fill(user);
+    await user.click(marketingBox());
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.getByText(CONSENT_REQUIRED_ERROR)).toBeTruthy();
+    expect(marketingBox().getAttribute("aria-invalid")).toBeNull();
+    await user.click(smsBox());
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    await screen.findByText(/Got it/);
+    expect(sent().marketingConsent.checked).toBe(true);
+    expect(sent().consent.checked).toBe(true);
+  });
+});
+
+describe("marketingConsentPayload", () => {
+  it("is undefined without wording, else checked + text (+ version)", () => {
+    expect(marketingConsentPayload(undefined, true)).toBeUndefined();
+    expect(marketingConsentPayload(null, false)).toBeUndefined();
+    expect(marketingConsentPayload({ text: "x" }, true)).toEqual({ checked: true, text: "x" });
+    expect(marketingConsentPayload(MARKETING, false)).toEqual({ checked: false, ...MARKETING });
   });
 });
 

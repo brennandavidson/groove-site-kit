@@ -432,7 +432,8 @@
   outline: 2px solid var(--gsk-error);
   outline-offset: 1px;
 }
-.gsk-contact-consent + .gsk-consent {
+.gsk-contact-consent + .gsk-consent,
+.gsk-consent + .gsk-marketing-consent {
   margin-top: 0.75rem;
 }
 .gsk-single-checkbox:focus-visible {

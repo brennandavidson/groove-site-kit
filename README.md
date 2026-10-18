@@ -6,7 +6,7 @@ What's in it:
 
 - `grooveSiteKit()` Astro integration: compiles the kit in the site, fails the build if portal data can't load, registers the site's pages with the portal after each production build.
 - `getSiteData()`: build-time fetch of the client's public data from the portal.
-- `<LeadForm>`: multi-step quiz (default) or single-card form (`layout="single"`) + consent, posts to portal intake, fires the pixel Lead with the same event id.
+- `<LeadForm>`: multi-step quiz (default) or single-card form (`layout="single"`) + consent (plus an optional marketing box), posts to portal intake, fires the pixel Lead with the same event id.
 - `<Tracker>`: first-party page events + attribution + Meta pixel.
 - `<CallNumber>`: the page's tracking number (or a per-page fallback, or the main line) as a `tel:` link.
 - `<Schema>`: LocalBusiness / HVACBusiness JSON-LD.
@@ -18,7 +18,7 @@ Requires Astro 7+ (Node 22.22+), React 19, `@astrojs/react`.
 
 ```json
 "dependencies": {
-  "groove-site-kit": "github:brennandavidson/groove-site-kit#v0.2.0"
+  "groove-site-kit": "github:brennandavidson/groove-site-kit#v0.3.0"
 }
 ```
 
@@ -166,6 +166,27 @@ For a custom wrapper, the raw island is `groove-site-kit/react` (you pass every 
 <LeadForm layout="single" contactConsent={{ text: "I agree to be contacted about my request by phone and email." }} />
 ```
 
+#### Marketing consent
+
+A separate checkbox for marketing texts (offers, seasonal reminders), for clients whose texting registration covers marketing. It sits below the SMS consent box in both layouts.
+
+- **Wording comes from the portal**: site data `marketingConsent { version, text }` (portal build 13). The box shows that exact text. The kit has no wording of its own.
+- **Always optional and unchecked by default.** Never pre-checked, never required, never bundled with the request boxes. Leaving it unchecked never blocks a submit, and checking it never satisfies a required SMS box.
+- **Payload**: when the box is shown, the lead carries `marketingConsent: { checked, text, version }` next to `consent` (`checked: false` when left unchecked, so the record shows it was offered). No box, no `marketingConsent` field.
+- **When it shows** (`marketingConsent` prop on `<LeadForm>` and `<SmsOptInPage>`):
+  - not set: shown when site data has marketing wording, hidden when it has none (portals before build 13 send none, so existing sites are unchanged)
+  - `marketingConsent={false}`: never shown, even when the portal sends wording
+  - `marketingConsent` (true): shown with the portal wording; if the portal sends none, nothing shows and the build logs a warning
+- Only turn it on after the client's approved texting campaign covers marketing (portal Console > Texting confirms it). Sites that are not there yet should pass `marketingConsent={false}`, because a portal on build 13 sends the wording for every client.
+- Pass the same value to `<SmsOptInPage>` so the page carriers review shows the marketing box and its exact text only when the live form does.
+- Raw island (`groove-site-kit/react`): pass `marketingConsent={{ text, version }}` yourself; unset or null means no box.
+
+```astro
+<LeadForm marketingConsent={false} />            <!-- client not registered for marketing yet -->
+<LeadForm layout="single" marketingConsent />   <!-- registration covers marketing -->
+<SmsOptInPage formPath="/contact" marketingConsent />
+```
+
 ### CallNumber
 
 ```astro
@@ -223,9 +244,9 @@ import { SmsOptInPage } from "groove-site-kit/components";
 ```
 
 - Paths must be `/privacy`, `/terms`, `/sms-opt-in` (forms and pages link there).
-- Filled from portal data: business name, legal name, phone, consent text + version.
+- Filled from portal data: business name, legal name, phone, consent text + version, marketing consent text + version (when on).
 - Carrier strings are verbatim and tested: titles "Privacy Policy" / "Terms & Conditions" / "Text Message Opt-In", "We do not sell or share your SMS opt-in data or personal information with third parties for marketing purposes.", "Message and data rates may apply.", the legal name, an "SMS Terms" section with STOP/HELP.
-- If the live form sets `consentRequired` or `contactConsent`, pass the same props to `<SmsOptInPage>` so the page carriers review describes the real form: `<SmsOptInPage formPath="/go/independent" consentRequired />`.
+- If the live form sets `consentRequired`, `contactConsent` or `marketingConsent`, pass the same props to `<SmsOptInPage>` so the page carriers review describes the real form: `<SmsOptInPage formPath="/go/independent" consentRequired />`. With marketing consent on it also shows the separate optional marketing box with its exact text (see Marketing consent).
 - The opt-in page shows the form's contact step statically (unchecked box, real consent text), the first text people get, and links.
 - They render a full standalone document. To use the site's header/footer instead, wrap them: `<Layout><PrivacyPage standalone={false} /></Layout>`. To restyle a standalone page, import your global CSS in the page file.
 - Plain template. Have counsel review.
@@ -276,7 +297,7 @@ Set these tokens on your own class (`<LeadForm class="my-form">`) to match an ex
 | `--gsk-btn-padding`, `--gsk-btn-font-size`, `--gsk-btn-radius`, `--gsk-btn-weight` | `1.125rem`, `1.125rem`, `8px`, `700` | Submit button |
 | `--gsk-badge-size`, `--gsk-on-success` | `60px`, `#fff` | Thank-you badge size and check color |
 
-Class hooks (single-class selectors, so `.my-form .gsk-single-input { ... }` wins): `.gsk-form[data-layout="single"]` (root card), `.gsk-form-title`, `.gsk-form-subtitle`, `.gsk-single-form`, `.gsk-single-field` (+ `.gsk-single-field-<type>`), `.gsk-single-label`, `.gsk-single-input`, `.gsk-single-select` (`[data-empty]` while the placeholder shows), `.gsk-single-error`, `.gsk-single-consent-wrap`, `.gsk-single-consent`, `.gsk-single-contact-consent`, `.gsk-single-checkbox`, `.gsk-single-consent-text`, `.gsk-single-consent-links`, `.gsk-single-alert`, `.gsk-single-submit`, `.gsk-single-note`, `.gsk-single-note-icon`, `.gsk-single-footnote`, `.gsk-thanks`, `.gsk-thanks-badge`, `.gsk-thanks-heading`, `.gsk-thanks-text`.
+Class hooks (single-class selectors, so `.my-form .gsk-single-input { ... }` wins): `.gsk-form[data-layout="single"]` (root card), `.gsk-form-title`, `.gsk-form-subtitle`, `.gsk-single-form`, `.gsk-single-field` (+ `.gsk-single-field-<type>`), `.gsk-single-label`, `.gsk-single-input`, `.gsk-single-select` (`[data-empty]` while the placeholder shows), `.gsk-single-error`, `.gsk-single-consent-wrap`, `.gsk-single-consent`, `.gsk-single-contact-consent`, `.gsk-single-marketing-consent`, `.gsk-single-checkbox`, `.gsk-single-consent-text`, `.gsk-single-consent-links`, `.gsk-single-alert`, `.gsk-single-submit`, `.gsk-single-note`, `.gsk-single-note-icon`, `.gsk-single-footnote`, `.gsk-thanks`, `.gsk-thanks-badge`, `.gsk-thanks-heading`, `.gsk-thanks-text`.
 
 ## Server API
 
@@ -309,10 +330,11 @@ Client sites only move when their tag is bumped, so a kit change never breaks a 
   "pixelId": "1787874271848321",
   "numbers": { "independent": { "e164": "+16233433189", "display": "(623) 343-3189", "label": "Patriarch" } },
   "consent": { "version": "2026-10-01", "text": "By checking this box, ..." },
+  "marketingConsent": { "version": "2026-10-20", "text": "Yes, text me occasional offers and seasonal reminders from ..." },
   "reviews": { "rating": 4.9, "count": 212, "source": "Google" } }
 ```
 
-`legalName`, `city`, `state`, phone fields, `intake.key`, `pixelId`, `reviews` may be null. `numbers` is keyed by page slug. The kit rejects any other `v`.
+`legalName`, `city`, `state`, phone fields, `intake.key`, `pixelId`, `reviews` may be null. `marketingConsent` may be missing or null (portals before build 13); when present it needs both `version` and `text`. `numbers` is keyed by page slug. The kit rejects any other `v`.
 
 2. `POST {PORTAL_URL}/api/sites/{slug}/pages`, header `authorization: Bearer <SITE_TOKEN>`:
 
@@ -323,7 +345,7 @@ Client sites only move when their tag is bumped, so a kit change never breaks a 
 
 Returns `{ "ok": true, "registered": 3 }`.
 
-3. Lead intake: `POST {intake.url}`, header `x-intake-key`, body `{ first, last?, phone, zip?, email?, answers, consent: { checked, text, version? }, page, visitorId?, attribution, leadEventId }`. Returns `{ ok, leadEventId, call: { when: "now" } | { when: "later", at, display } | { when: "none" } }`. 429 = slow down, 401 = bad key.
+3. Lead intake: `POST {intake.url}`, header `x-intake-key`, body `{ first, last?, phone, zip?, email?, answers, consent: { checked, text, version? }, marketingConsent?: { checked, text, version? }, page, visitorId?, attribution, leadEventId }`. Returns `{ ok, leadEventId, call: { when: "now" } | { when: "later", at, display } | { when: "none" } }`. 429 = slow down, 401 = bad key.
 
 4. Page events: `POST {beacon.url}` (`text/plain` body, JSON) `{ v: 1, vid, sid, t: clientSlug, pg: pageSlug, path, a: attribution, ev: [{ n, t, p }] }`.
 
