@@ -1,6 +1,10 @@
 ---
-// tel: link to this page's tracking number, falling back to the main number.
+// tel: link to this page's tracking number, else the page's fallback, else the main number.
 // The tracker logs a call_click (and a pixel Contact) for every tel: link.
+//
+//   <CallNumber />                                         number as the link text
+//   <CallNumber fallback="(602) 905-1450" class="btn" />   shown until the portal has a number for the page
+//   <CallNumber>{(n) => <><Icon /> <span>{n.display}</span></>}</CallNumber>   custom content with the number
 import type { HTMLAttributes } from "astro/types";
 import { getSiteData } from "../site-data.js";
 import { slugFromPath } from "../paths.js";
@@ -11,18 +15,24 @@ export type Props = Omit<HTMLAttributes<"a">, "href"> & {
   page?: string;
   /** data-track id reported with call_click. Default "call". */
   track?: string;
+  /**
+   * Number to show while the portal has no tracking number for this page (E.164 or a display
+   * string). Used before the main number. A portal number always wins.
+   */
+  fallback?: string;
 };
 
-const { page, track = "call", ...attrs } = Astro.props;
+const { page, track = "call", fallback, ...attrs } = Astro.props;
 const site = await getSiteData();
-const number = numberFor(site, page ?? slugFromPath(Astro.url.pathname));
-const hasSlot = Astro.slots.has("default");
+const number = numberFor(site, page ?? slugFromPath(Astro.url.pathname), fallback);
+// A function child gets the resolved number: {(n) => <span>{n.display}</span>}.
+const content = number && Astro.slots.has("default") ? await Astro.slots.render("default", [number]) : null;
 ---
 
 {
   number && (
-    <a href={`tel:${number.e164}`} data-track={track} data-gsk-call={number.tracking ? "tracking" : "main"} {...attrs}>
-      {hasSlot ? <slot /> : number.display}
+    <a href={`tel:${number.e164}`} data-track={track} data-gsk-call={number.source} {...attrs}>
+      {content !== null ? <Fragment set:html={content} /> : number.display}
     </a>
   )
 }

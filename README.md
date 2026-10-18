@@ -6,9 +6,9 @@ What's in it:
 
 - `grooveSiteKit()` Astro integration: compiles the kit in the site, fails the build if portal data can't load, registers the site's pages with the portal after each production build.
 - `getSiteData()`: build-time fetch of the client's public data from the portal.
-- `<LeadForm>`: multi-step quiz + contact step + consent, posts to portal intake, fires the pixel Lead with the same event id.
+- `<LeadForm>`: multi-step quiz (default) or single-card form (`layout="single"`) + consent, posts to portal intake, fires the pixel Lead with the same event id.
 - `<Tracker>`: first-party page events + attribution + Meta pixel.
-- `<CallNumber>`: the page's tracking number (or the main line) as a `tel:` link.
+- `<CallNumber>`: the page's tracking number (or a per-page fallback, or the main line) as a `tel:` link.
 - `<Schema>`: LocalBusiness / HVACBusiness JSON-LD.
 - `<PrivacyPage>`, `<TermsPage>`, `<SmsOptInPage>`: carrier-ready legal and opt-in pages.
 
@@ -18,7 +18,7 @@ Requires Astro 7+ (Node 22.22+), React 19, `@astrojs/react`.
 
 ```json
 "dependencies": {
-  "groove-site-kit": "github:brennandavidson/groove-site-kit#v0.1.0"
+  "groove-site-kit": "github:brennandavidson/groove-site-kit#v0.2.0"
 }
 ```
 
@@ -114,14 +114,70 @@ Don't add `client:load`: the wrapper already hydrates the island (Astro warns if
 - No `intake.key` in site data = preview mode: walks through, sends nothing.
 - Anchor id `estimate` by default (`id` prop), so `href="#estimate"` buttons work.
 
+- `preview`: walk through and send nothing even when site data has an intake key (review builds).
+- `class`: extra class on the form root, for styling hooks. `sendingLabel`: button text while posting (default "Sending...").
+- `fallbackNumber`: the page number for the error message and thank-you call button until the portal has one (same rule as CallNumber `fallback`).
+
 For a custom wrapper, the raw island is `groove-site-kit/react` (you pass every prop yourself).
+
+#### Quiz or single card?
+
+- **Quiz** (default): one question per step, then the contact step. Use it for new pages: small asks first lift completion on cold ad traffic.
+- **Single** (`layout="single"`): every field visible on one card, native dropdowns, no steps or progress bar. Use it when a client already has a proven one-card form to match field for field, or when the form is short (name + phone + one question).
+
+```astro
+<LeadForm
+  layout="single"
+  page="beat-your-quote"
+  class="ash-form"
+  labels="hidden"
+  title="SEND US YOUR QUOTE"
+  subtitle="We'll beat it in 24 hours"
+  fields={[
+    { type: "fullName", placeholder: "Full Name *" },
+    { type: "phone", placeholder: "Your Phone Number *" },
+    { type: "address", placeholder: "Your Address *", label: "Address" },
+    { type: "zip", placeholder: "Zip Code *" },
+    { type: "select", placeholder: "Who Gave You Your Quote?", options: ["One of the big companies", "I'm not sure", "Other"] },
+  ]}
+  submitLabel="GET MY BETTER PRICE"
+  sendingLabel="Submitting..."
+  reassurance="We'll get back to you within 24 hours"
+  reassuranceIcon="⚡"
+  thanks={{ heading: "Quote Received!", message: "We'll review your quote and get back to you within 24 hours.", icon: "badge", callCta: "" }}
+>
+  <p slot="footnote">*Price-beat guarantee applies to written quotes. <a href="#footer-terms">See terms.</a></p>
+</LeadForm>
+```
+
+- `fields` (in order). Types: `fullName`, `phone`, `address`, `zip`, `email`, `select`. Each takes `placeholder` (shown exactly, so include your own `*`), `label` (accessible name), `required`, `error` (message when required and empty). Selects also take `options` and render as a native `<select>` whose first, disabled option is the placeholder. Defaults: full name, phone, zip, email (optional). Required by default: fullName, phone (always), address, zip. Optional by default: email, select.
+- `labels="hidden"` keeps labels for screen readers only (placeholder-only look). Default `"visible"`.
+- Payload: the full name is split on the first space into `first` / `last`; `phone` (E.164), `zip` and `email` as usual (left out when the form has no such field); **address and select answers go in `answers` keyed by their label** (the intake API has no address field). Unanswered optional selects are left out.
+- `reassurance` is the line under the button (single layout: only when set), `reassuranceIcon` a short decorative icon before it. The `footnote` slot is small print under the button.
+- `thanks.message` replaces the call-timing copy with fixed wording, `thanks.icon: "badge"` shows a white check on a filled circle, `thanks.callCta: ""` hides the call button. These work in both layouts.
+
+#### Consent options (both layouts)
+
+- The SMS consent box always shows the portal's consent text and sends `consent: { checked, text, version }`. By default it is **unchecked and optional**.
+- `consentRequired`: the SMS box must be checked to submit; leaving it unchecked shows an inline error and focuses the box. Default `false`. (Carrier and TCPA guidance is that texting consent should not be a condition of the request; only turn this on when the client has decided to.)
+- `contactConsent={{ text, required?, label?, error? }}`: a second box, before the SMS box, for agreeing to be contacted about the request by phone and email. Required by default. When checked, `answers[label ?? "Contact consent"]` holds the exact text shown, so the wording is on record with the lead. This lets a client require contact consent while SMS consent stays optional.
+
+```astro
+<LeadForm layout="single" contactConsent={{ text: "I agree to be contacted about my request by phone and email." }} />
+```
 
 ### CallNumber
 
 ```astro
 <CallNumber />                                       <!-- (623) 343-3189 on /independent, else main line -->
 <CallNumber page="independent" class="btn" track="hero_call">Call now</CallNumber>
+<CallNumber page="valentines" fallback="(480) 536-4465" />
+<CallNumber page="valentines" fallback="(480) 536-4465">{(n) => <><PhoneIcon /> <span>{n.display}</span></>}</CallNumber>
 ```
+
+- Order: the portal's tracking number for the page, then `fallback` (E.164 or a display string; a display string is shown as written), then the main line. A portal number always wins, so a page can show its old hard-coded number until that number is moved into the portal.
+- A function child receives the resolved number (`{ e164, display, tracking, source }`) for custom link content.
+- `data-gsk-call` on the link is `tracking`, `fallback` or `main`.
 
 Renders nothing if the client has no number at all.
 
@@ -169,6 +225,7 @@ import { SmsOptInPage } from "groove-site-kit/components";
 - Paths must be `/privacy`, `/terms`, `/sms-opt-in` (forms and pages link there).
 - Filled from portal data: business name, legal name, phone, consent text + version.
 - Carrier strings are verbatim and tested: titles "Privacy Policy" / "Terms & Conditions" / "Text Message Opt-In", "We do not sell or share your SMS opt-in data or personal information with third parties for marketing purposes.", "Message and data rates may apply.", the legal name, an "SMS Terms" section with STOP/HELP.
+- If the live form sets `consentRequired` or `contactConsent`, pass the same props to `<SmsOptInPage>` so the page carriers review describes the real form: `<SmsOptInPage formPath="/go/independent" consentRequired />`.
 - The opt-in page shows the form's contact step statically (unchecked box, real consent text), the first text people get, and links.
 - They render a full standalone document. To use the site's header/footer instead, wrap them: `<Layout><PrivacyPage standalone={false} /></Layout>`. To restyle a standalone page, import your global CSS in the page file.
 - Plain template. Have counsel review.
@@ -194,6 +251,33 @@ Plain CSS with `gsk-` class names, independent of the site's Tailwind config. Re
 
 Defaults sit in `:where(:root)`, so any rule in the site wins.
 
+### Single-card form hooks
+
+Set these tokens on your own class (`<LeadForm class="my-form">`) to match an existing form:
+
+| Token | Default | What |
+| --- | --- | --- |
+| `--gsk-card-padding` | `2rem` | Card padding |
+| `--gsk-card-shadow` | `0 4px 20px rgb(0 0 0 / 0.1)` | Card shadow |
+| `--gsk-card-border` | `0` | Card border |
+| `--gsk-radius`, `--gsk-card` | | Card radius and background |
+| `--gsk-form-align` | `inherit` | Card text alignment |
+| `--gsk-head-gap` | `1.25rem` | Space under the title/subtitle |
+| `--gsk-field-gap` | `0.75rem` | Gap between fields, consent, button, note |
+| `--gsk-input-padding` | `1rem` | Inputs and selects |
+| `--gsk-input-border` | `1px solid var(--gsk-line)` | |
+| `--gsk-input-radius` | `8px` | |
+| `--gsk-input-font-size` | `1rem` | |
+| `--gsk-input-bg` | `var(--gsk-card)` | |
+| `--gsk-select-placeholder` | `var(--gsk-muted)` | Select text color while the placeholder option shows |
+| `--gsk-checkbox-size` | `18px` | Consent checkboxes |
+| `--gsk-consent-font-size` | `0.875rem` | Consent text |
+| `--gsk-consent-link` | `var(--gsk-brand)` | Consent links |
+| `--gsk-btn-padding`, `--gsk-btn-font-size`, `--gsk-btn-radius`, `--gsk-btn-weight` | `1.125rem`, `1.125rem`, `8px`, `700` | Submit button |
+| `--gsk-badge-size`, `--gsk-on-success` | `60px`, `#fff` | Thank-you badge size and check color |
+
+Class hooks (single-class selectors, so `.my-form .gsk-single-input { ... }` wins): `.gsk-form[data-layout="single"]` (root card), `.gsk-form-title`, `.gsk-form-subtitle`, `.gsk-single-form`, `.gsk-single-field` (+ `.gsk-single-field-<type>`), `.gsk-single-label`, `.gsk-single-input`, `.gsk-single-select` (`[data-empty]` while the placeholder shows), `.gsk-single-error`, `.gsk-single-consent-wrap`, `.gsk-single-consent`, `.gsk-single-contact-consent`, `.gsk-single-checkbox`, `.gsk-single-consent-text`, `.gsk-single-consent-links`, `.gsk-single-alert`, `.gsk-single-submit`, `.gsk-single-note`, `.gsk-single-note-icon`, `.gsk-single-footnote`, `.gsk-thanks`, `.gsk-thanks-badge`, `.gsk-thanks-heading`, `.gsk-thanks-text`.
+
 ## Server API
 
 Import from `.astro` frontmatter or other Vite-compiled code (not astro.config; use `/integration` there):
@@ -202,7 +286,7 @@ Import from `.astro` frontmatter or other Vite-compiled code (not astro.config; 
 import { getSiteData, numberFor, legalWho, CARRIER, slugFromPath } from "groove-site-kit";
 
 const site = await getSiteData(); // cached per process
-const n = numberFor(site, "independent"); // { e164, display, tracking } | null
+const n = numberFor(site, "independent", "(602) 905-1450"); // { e164, display, tracking, source } | null
 ```
 
 ## Rolling out kit updates
@@ -239,7 +323,7 @@ Client sites only move when their tag is bumped, so a kit change never breaks a 
 
 Returns `{ "ok": true, "registered": 3 }`.
 
-3. Lead intake: `POST {intake.url}`, header `x-intake-key`, body `{ first, phone, zip, email?, answers, consent: { checked, text }, page, visitorId?, attribution, leadEventId }`. Returns `{ ok, leadEventId, call: { when: "now" } | { when: "later", at, display } | { when: "none" } }`. 429 = slow down, 401 = bad key.
+3. Lead intake: `POST {intake.url}`, header `x-intake-key`, body `{ first, last?, phone, zip?, email?, answers, consent: { checked, text, version? }, page, visitorId?, attribution, leadEventId }`. Returns `{ ok, leadEventId, call: { when: "now" } | { when: "later", at, display } | { when: "none" } }`. 429 = slow down, 401 = bad key.
 
 4. Page events: `POST {beacon.url}` (`text/plain` body, JSON) `{ v: 1, vid, sid, t: clientSlug, pg: pageSlug, path, a: attribution, ev: [{ n, t, p }] }`.
 

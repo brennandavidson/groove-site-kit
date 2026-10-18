@@ -9,6 +9,7 @@ import SmsOptInPage from "../src/components/SmsOptInPage.astro";
 import TermsPage from "../src/components/TermsPage.astro";
 import Tracker from "../src/components/Tracker.astro";
 import { SMS_CONSENT_TEMPLATE, smsConsentText } from "../src/consent";
+import { numberFor } from "../src/numbers";
 import { CARRIER } from "../src/legal";
 import { clearSiteDataCache } from "../src/site-data.js";
 import { PORTAL, SITE, sitesFetch } from "./fixtures";
@@ -79,6 +80,21 @@ describe("legal pages carry every carrier-required string", () => {
     expect(html).toContain('href="/privacy"');
   });
 
+  it("Text Message Opt-In describes a required consent box when the form requires it", async () => {
+    const t = text(await render(SmsOptInPage, { formPath: "/independent", consentRequired: true }, "/sms-opt-in"));
+    expect(t).toContain("unchecked text message consent checkbox that must be checked to send the request");
+    expect(t).not.toContain("unchecked, optional");
+    expect(t).toContain(SITE.consent.text);
+  });
+
+  it("Text Message Opt-In shows both boxes for the two-box option", async () => {
+    const t = text(await render(SmsOptInPage, { formPath: "/independent", contactConsent: { text: "I agree to be contacted about my request by phone and email." } }, "/sms-opt-in"));
+    expect(t).toContain("I agree to be contacted about my request by phone and email.");
+    expect(t).toContain("required to send the request");
+    expect(t).toContain("unchecked, optional text message consent checkbox");
+    expect(t).toContain(SITE.consent.text);
+  });
+
   it("falls back to the business name when there is no legal name", async () => {
     vi.stubGlobal("fetch", sitesFetch({ ...SITE, client: { ...SITE.client, legalName: null } }));
     const t = text(await render(PrivacyPage, {}, "/privacy"));
@@ -120,6 +136,36 @@ describe("CallNumber", () => {
     const html = await render(CallNumber, { page: "beat-your-quote" });
     expect(html).toContain('href="tel:+16028069897"');
     expect(html).toContain("(602) 806-9897");
+    expect(html).toContain('data-gsk-call="main"');
+  });
+
+  it("shows the fallback before the main number when the portal has no number for the page", async () => {
+    const html = await render(CallNumber, { page: "beat-your-quote", fallback: "(602) 905-1450" });
+    expect(html).toContain('href="tel:+16029051450"');
+    expect(html).toContain("(602) 905-1450");
+    expect(html).toContain('data-gsk-call="fallback"');
+    // E.164 fallback is formatted for display.
+    expect(await render(CallNumber, { page: "beat-your-quote", fallback: "+16029051450" })).toContain("(602) 905-1450");
+  });
+
+  it("a portal number always wins over the fallback", async () => {
+    const html = await render(CallNumber, { page: "independent", fallback: "(602) 905-1450" });
+    expect(html).toContain('href="tel:+16233433189"');
+    expect(html).not.toContain("905-1450");
+    expect(html).toContain('data-gsk-call="tracking"');
+  });
+
+  it("ignores an unusable fallback", async () => {
+    expect(await render(CallNumber, { page: "beat-your-quote", fallback: "call us" })).toContain('href="tel:+16028069897"');
+  });
+});
+
+describe("numberFor", () => {
+  it("tracking > fallback > main > null", () => {
+    expect(numberFor(SITE, "independent", "(602) 905-1450")).toEqual({ e164: "+16233433189", display: "(623) 343-3189", tracking: true, source: "tracking" });
+    expect(numberFor(SITE, "valentines", "480-536-4465")).toEqual({ e164: "+14805364465", display: "480-536-4465", tracking: false, source: "fallback" });
+    expect(numberFor(SITE, "valentines")).toEqual({ e164: "+16028069897", display: "(602) 806-9897", tracking: false, source: "main" });
+    expect(numberFor({ ...SITE, client: { ...SITE.client, phoneE164: null, phoneDisplay: null } }, "valentines")).toBeNull();
   });
 });
 
@@ -166,5 +212,28 @@ describe("LeadForm.astro", () => {
     expect(text(html)).toContain(SITE.consent.text);
     expect(html).toContain("gpk_test_0123456789abcdef");
     expect(html).not.toContain("tok_should_never_render");
+  });
+
+  it("single layout: class hook, footnote slot, fallback number and preview mode", async () => {
+    const html = await container.renderToString(LeadForm, {
+      props: {
+        page: "beat-your-quote",
+        layout: "single",
+        class: "ash-form",
+        preview: true,
+        fallbackNumber: "(602) 905-1450",
+        fields: [{ type: "fullName", placeholder: "Full Name *" }, { type: "phone", placeholder: "Your Phone Number *" }],
+        submitLabel: "GET MY BETTER PRICE",
+      },
+      slots: { footnote: '<p class="fine">*Price-beat guarantee applies. <a href="#footer-terms">See terms.</a></p>' },
+      request: new Request("https://go.ashcooling.com/beat-your-quote"),
+    });
+    expect(html).toContain('data-layout="single"');
+    expect(html).toContain('class="gsk-form ash-form"');
+    expect(html).toContain('placeholder="Full Name *"');
+    expect(text(html)).toContain("*Price-beat guarantee applies. See terms.");
+    expect(html).toContain("(602) 905-1450");
+    // Preview: the intake key never reaches the page.
+    expect(html).not.toContain("gpk_test_0123456789abcdef");
   });
 });

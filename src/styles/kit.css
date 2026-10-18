@@ -334,6 +334,182 @@
   overflow: hidden;
 }
 
+/*
+  Single-card layout (layout="single"). Everything reads a token with a default, so a site can
+  match an existing form by setting tokens on its own class, e.g.
+    .my-form { --gsk-input-border: 1px solid #e0e0e0; --gsk-btn-radius: 8px; }
+  For anything else, style the class hooks (.gsk-single-input, .gsk-single-select, ...): these
+  rules are single-class selectors, so a site rule like ".my-form .gsk-single-input" wins.
+*/
+.gsk-form[data-layout="single"] {
+  padding: var(--gsk-card-padding, 2rem);
+  border: var(--gsk-card-border, 0);
+  border-radius: var(--gsk-radius);
+  background: var(--gsk-card);
+  box-shadow: var(--gsk-card-shadow, 0 4px 20px rgb(0 0 0 / 0.1));
+  overflow: visible;
+  text-align: var(--gsk-form-align, inherit);
+}
+.gsk-form[data-layout="single"] .gsk-form-head {
+  margin-bottom: var(--gsk-head-gap, 1.25rem);
+  padding: 0;
+  border: 0;
+  background: none;
+}
+.gsk-form[data-layout="single"] .gsk-form-body {
+  padding: 0;
+}
+.gsk-single-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gsk-field-gap, 0.75rem);
+}
+.gsk-single-label {
+  display: block;
+  margin-bottom: 0.375rem;
+  font-weight: 700;
+}
+.gsk-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+.gsk-single-input,
+.gsk-single-select {
+  display: block;
+  width: 100%;
+  padding: var(--gsk-input-padding, 1rem);
+  border: var(--gsk-input-border, 1px solid var(--gsk-line));
+  border-radius: var(--gsk-input-radius, 8px);
+  background: var(--gsk-input-bg, var(--gsk-card));
+  color: var(--gsk-ink);
+  font: inherit;
+  font-size: var(--gsk-input-font-size, 1rem);
+  transition: border-color 0.2s;
+}
+.gsk-single-select {
+  cursor: pointer;
+}
+.gsk-single-select[data-empty] {
+  color: var(--gsk-select-placeholder, var(--gsk-muted));
+}
+.gsk-single-input:focus,
+.gsk-single-select:focus {
+  outline: none;
+  border-color: var(--gsk-focus);
+}
+.gsk-single-input[aria-invalid="true"],
+.gsk-single-select[aria-invalid="true"] {
+  border-color: var(--gsk-error);
+}
+.gsk-single-error {
+  margin: 0.375rem 0 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--gsk-error);
+}
+.gsk-single-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+.gsk-single-checkbox {
+  flex-shrink: 0;
+  width: var(--gsk-checkbox-size, 18px);
+  height: var(--gsk-checkbox-size, 18px);
+  margin: 2px 0 0;
+  accent-color: var(--gsk-brand);
+  cursor: pointer;
+}
+.gsk-single-checkbox[aria-invalid="true"],
+.gsk-checkbox[aria-invalid="true"] {
+  outline: 2px solid var(--gsk-error);
+  outline-offset: 1px;
+}
+.gsk-contact-consent + .gsk-consent {
+  margin-top: 0.75rem;
+}
+.gsk-single-checkbox:focus-visible {
+  outline: 3px solid var(--gsk-focus);
+  outline-offset: 2px;
+}
+.gsk-single-consent-text {
+  font-size: var(--gsk-consent-font-size, 0.875rem);
+  line-height: 1.5;
+  color: var(--gsk-muted);
+  cursor: pointer;
+}
+.gsk-single-consent-links a,
+.gsk-single-alert a {
+  color: var(--gsk-consent-link, var(--gsk-brand));
+  text-decoration: underline;
+}
+.gsk-single-alert {
+  margin: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--gsk-error);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--gsk-error) 6%, var(--gsk-card));
+  font-size: 0.95rem;
+}
+.gsk-single-submit {
+  width: 100%;
+  padding: var(--gsk-btn-padding, 1.125rem);
+  border: 0;
+  border-radius: var(--gsk-btn-radius, 8px);
+  background: var(--gsk-brand);
+  color: var(--gsk-on-brand);
+  font: inherit;
+  font-size: var(--gsk-btn-font-size, 1.125rem);
+  font-weight: var(--gsk-btn-weight, 700);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.gsk-single-submit:focus-visible {
+  outline: 3px solid var(--gsk-focus);
+  outline-offset: 2px;
+}
+.gsk-single-submit:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}
+.gsk-single-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  margin: 0.5rem 0 0.25rem;
+  text-align: center;
+  font-size: 0.8125rem;
+  color: var(--gsk-muted);
+}
+.gsk-single-footnote {
+  text-align: center;
+  font-size: 0.6875rem;
+  color: var(--gsk-muted);
+}
+.gsk-thanks-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--gsk-badge-size, 60px);
+  height: var(--gsk-badge-size, 60px);
+  margin: 0 auto 1rem;
+  border-radius: 50%;
+  background: var(--gsk-success);
+  color: var(--gsk-on-success, #fff);
+}
+.gsk-thanks-badge svg {
+  width: 50%;
+  height: 50%;
+}
+
 /* Legal pages */
 .gsk-legal {
   max-width: 42rem;
@@ -425,7 +601,10 @@
 @media (prefers-reduced-motion: reduce) {
   .gsk-progress-bar,
   .gsk-option,
-  .gsk-btn {
+  .gsk-btn,
+  .gsk-single-input,
+  .gsk-single-select,
+  .gsk-single-submit {
     transition: none;
   }
 }

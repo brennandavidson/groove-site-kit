@@ -5,6 +5,7 @@ import LegalLayout from "./LegalLayout.astro";
 import { getSiteData } from "../site-data.js";
 import { LEGAL_PATHS } from "../paths.js";
 import { CARRIER, LEGAL_TITLES, legalTitle, legalWho } from "../legal";
+import type { ContactConsent } from "../lead-form/logic";
 
 export type Props = {
   standalone?: boolean;
@@ -12,9 +13,14 @@ export type Props = {
   formPath?: string;
   /** Match the live form's button. Default "Get my free estimate". */
   submitLabel?: string;
+  /** Match the live form: true when the form sets consentRequired (the SMS box must be checked). */
+  consentRequired?: boolean;
+  /** Match the live form: its separate contact consent box, if any. */
+  contactConsent?: ContactConsent;
 };
 
-const { standalone, formPath = "/", submitLabel = "Get my free estimate" } = Astro.props;
+const { standalone, formPath = "/", submitLabel = "Get my free estimate", consentRequired = false, contactConsent } = Astro.props;
+const contactRequired = contactConsent ? (contactConsent.required ?? true) : false;
 const site = await getSiteData();
 const who = legalWho(site);
 const name = site.client.name;
@@ -26,7 +32,23 @@ const formLabel = formUrl.replace(/^https?:\/\//, "").replace(/\/$/, "") || "thi
 <LegalLayout title={legalTitle("smsOptIn", site)} heading={LEGAL_TITLES.smsOptIn} who={who} standalone={standalone}>
   <slot name="head" slot="head" />
   <p>
-    Homeowners request service from {who} on our website form at <a href={formUrl}>{formLabel}</a>. The last step of the form asks for contact details and shows an <strong>unchecked, optional</strong> consent checkbox. We only text people who check it.
+    Homeowners request service from {who} on our website form at <a href={formUrl}>{formLabel}</a>. The form asks for contact details and shows
+    {
+      contactConsent ? (
+        <>
+          two checkboxes: one to be contacted about their request by phone and email ({contactRequired ? "required to send the request" : "optional"}), and a separate, <strong>unchecked{consentRequired ? "" : ", optional"}</strong> text message consent checkbox{consentRequired ? " that must be checked to send the request" : ""}.
+        </>
+      ) : consentRequired ? (
+        <>
+          an <strong>unchecked</strong> text message consent checkbox that must be checked to send the request.
+        </>
+      ) : (
+        <>
+          an <strong>unchecked, optional</strong> consent checkbox.
+        </>
+      )
+    }
+    We only text people who check the text message consent box.
   </p>
   <p class="gsk-legal-note">This is the form's contact step, exactly as homeowners see it:</p>
   <div class="gsk-optin-mock" aria-label="Copy of the request form's contact step" role="figure">
@@ -40,6 +62,16 @@ const formLabel = formUrl.replace(/^https?:\/\//, "").replace(/\/$/, "") || "thi
         ))
       }
     </div>
+    {
+      contactConsent && (
+        <div class="gsk-consent gsk-contact-consent">
+          <div class="gsk-consent-label">
+            <span aria-hidden="true" class="gsk-consent-box" />
+            <span class="gsk-consent-text">{contactConsent.text}</span>
+          </div>
+        </div>
+      )
+    }
     <div class="gsk-consent">
       <div class="gsk-consent-label">
         <span aria-hidden="true" class="gsk-consent-box"></span>

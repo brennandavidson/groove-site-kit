@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.2.0 (2026-10-17)
+
+All additions are opt-in. The quiz layout, its markup and its defaults are unchanged.
+
+- LeadForm `layout="single"`: every field on one card, no steps or progress bar. `fields` sets the fields in order (`fullName`, `phone`, `address`, `zip`, `email`, `select`), each with exact placeholder, label, required flag and error text. Selects are native `<select>` elements with a disabled placeholder option. `labels="hidden"` gives a placeholder-only look with screen-reader labels.
+- Single-layout payload: full name split into `first` / `last`; address and select answers in `answers` keyed by label (the intake API has no address field); `zip` / `email` left out when the form has no such field. Consent, leadEventId, visitorId, attribution, honeypot, pixel Lead and form events work as in the quiz.
+- Exact-copy hooks: `reassurance` + `reassuranceIcon` (line under the button), `footnote` slot, `sendingLabel`, `class` on the root, CSS tokens (`--gsk-card-padding`, `--gsk-input-*`, `--gsk-btn-*`, ...) and `gsk-single-*` class hooks (see README, Styling).
+- Thank-you: `thanks.message` (fixed copy instead of call timing), `thanks.icon: "badge"`, `thanks.callCta: ""` hides the call button.
+- Consent: `consentRequired` (SMS box must be checked, inline error; default false) and `contactConsent` (a separate, by default required, contact-by-phone-and-email box whose text is recorded in `answers`). Both layouts.
+- SmsOptInPage `consentRequired` / `contactConsent`: the carrier-review page describes and shows the boxes the live form really has (required SMS box, or contact box + optional SMS box). Default wording unchanged.
+- LeadForm.astro: `preview` (send nothing even with an intake key), `class`, `fallbackNumber`, `footnote` slot forwarding.
+- CallNumber `fallback`: shown when the portal has no tracking number for the page, before the main line; a portal number always wins. Function children get the resolved number. `numberFor(site, page, fallback?)` returns `source` (`tracking` / `fallback` / `main`), mirrored in `data-gsk-call`.
+- Payload type: `last?`, `zip?`.
+
 ## v0.1.1 (2026-10-19)
 - LeadForm sends `consent.version` (the portal keeps it with the agreed text as the legal record).
 - LeadForm title is an `<h2>` (no skipped heading levels).

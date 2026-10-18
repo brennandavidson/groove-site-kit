@@ -8,32 +8,54 @@ import "../styles/kit.css";
 
 type SiteDataProps = "business" | "phoneDisplay" | "callE164" | "callDisplay" | "intakeUrl" | "intakeKey" | "consentText" | "consentVersion";
 
-export type Props = Omit<LeadFormProps, SiteDataProps | "page"> & {
+export type Props = Omit<LeadFormProps, SiteDataProps | "page" | "className" | "footnote"> & {
   /** Page slug. Defaults to the last path segment ("home" for "/"). */
   page?: string;
   /** When the island hydrates. Default "load". */
   hydrate?: "load" | "idle" | "visible";
+  /** Extra class on the form root (styling hook). */
+  class?: string;
+  /** Preview mode: the form walks through and sends nothing, even when site data has an intake key. */
+  preview?: boolean;
+  /** Page number to offer in errors and the thank-you call button until the portal has one (see CallNumber). */
+  fallbackNumber?: string;
 };
 
-const { page: pageProp, hydrate = "load", ...rest } = Astro.props;
+const { page: pageProp, hydrate = "load", class: className, preview = false, fallbackNumber, ...rest } = Astro.props;
 const site = await getSiteData();
 const page = pageProp ?? slugFromPath(Astro.url.pathname);
-const number = numberFor(site, page);
+const number = numberFor(site, page, fallbackNumber);
+const hasFootnote = Astro.slots.has("footnote");
 
 const props: LeadFormProps = {
   privacyUrl: LEGAL_PATHS.privacy,
   termsUrl: LEGAL_PATHS.terms,
   ...rest,
+  ...(className ? { className } : {}),
   page,
   business: site.client.name,
   phoneDisplay: site.client.phoneDisplay,
   callE164: number?.e164 ?? null,
   callDisplay: number?.display ?? null,
   intakeUrl: site.intake.url,
-  intakeKey: site.intake.key,
+  intakeKey: preview ? null : site.intake.key,
   consentText: site.consent.text,
   consentVersion: site.consent.version,
 };
 ---
 
-{hydrate === "idle" ? <Island client:idle {...props} /> : hydrate === "visible" ? <Island client:visible {...props} /> : <Island client:load {...props} />}
+{
+  hydrate === "idle" ? (
+    <Island client:idle {...props}>
+      {hasFootnote && <slot name="footnote" slot="footnote" />}
+    </Island>
+  ) : hydrate === "visible" ? (
+    <Island client:visible {...props}>
+      {hasFootnote && <slot name="footnote" slot="footnote" />}
+    </Island>
+  ) : (
+    <Island client:load {...props}>
+      {hasFootnote && <slot name="footnote" slot="footnote" />}
+    </Island>
+  )
+}
